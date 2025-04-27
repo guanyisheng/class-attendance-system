@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.5">
+    <title>课堂考勤系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 1rem;
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            background-color: #fff;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            color: #2e7d32;
+        }
+
+        .watermark {
+            font-size: 1.5rem;
+            bottom: 1rem;
+            right: 1rem;
+            color: rgba(0, 0, 0, 0.1);
+        }
+
+        .status-btn {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            white-space: nowrap;
+            border: 1px solid #ccc;
+            background-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .status-btn.selected {
+            color: white;
+        }
+
+        .status-btn.normal.selected {
+            background-color: #2e7d32;
+        }
+
+        .status-btn.sick.selected {
+            background-color: #ff9800;
+        }
+
+        .status-btn.public.selected {
+            background-color: #2196f3;
+        }
+
+        .status-btn.leave.selected {
+            background-color: #9c27b0;
+        }
+
+        .status-btn.absent.selected {
+            background-color: #f44336;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+        }
+
+        .attendance-table {
+            min-width: 500px;
+            width: max-content;
+        }
+
+        .attendance-table th,
+        .attendance-table td {
+            padding: 0.6rem 0.8rem;
+            white-space: nowrap;
+        }
+
+        .attendance-table th {
+            font-size: 0.8rem;
+            background-color: #f9fafb;
+        }
+
+        /* 调整姓名列宽度，保证每行展示 3 个字不折行 */
+        .attendance-table td:first-child {
+            min-width: 120px;
+            max-width: 120px;
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+
+        /* 日期查询样式 */
+        #dateQuery {
+            margin-top: 1rem;
+        }
+
+        #dateQuery input {
+            padding: 0.3rem 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+
+        #dateQuery button {
+            padding: 0.3rem 0.6rem;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #dateQuery button:hover {
+            background-color: #226026;
+        }
+
+        button.action-btn {
+            padding: 0.6rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button.action-btn.confirm {
+            background-color: #2e7d32;
+            color: white;
+        }
+
+        button.action-btn.confirm:hover {
+            background-color: #226026;
+        }
+
+        button.action-btn.export {
+            background-color: #2196f3;
+            color: white;
+        }
+
+        button.action-btn.export:hover {
+            background-color: #1769aa;
+        }
+
+        button.action-btn.export-abnormal {
+            background-color: #f44336;
+            color: white;
+        }
+
+        button.action-btn.export-abnormal:hover {
+            background-color: #c62828;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card header">
+            <div class="logo">
+                <i class="fas fa-calendar-check mr-2"></i>课堂考勤系统
+            </div>
+            <div class="watermark">云南经贸外事职业学院</div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-sm font-medium mb-3">导入学生名单</h2>
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-700">学生名单 (每行一个姓名)</label>
+                <textarea id="studentList" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 h-14"></textarea>
+            </div>
+            <button id="importStudents" class="action-btn confirm w-full py-2">
+                <i class="fas fa-file-import mr-1"></i> 导入学生
+            </button>
+        </div>
+
+        <div id="attendanceSection" class="card hidden">
+            <div class="table-container">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>学生姓名</th>
+                            <th>考勤状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceBody"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-2">
+                <button id="confirmAttendance" class="action-btn confirm w-full py-2">
+                    <i class="fas fa-check mr-1"></i> 确认考勤
+                </button>
+
+                <div id="exportButtons" class="hidden flex flex-col gap-2">
+                    <button id="exportAllAttendance" class="action-btn export w-full py-2">
+                        <i class="fas fa-file-excel mr-1"></i> 导出全部
+                    </button>
+                    <button id="exportAbnormalAttendance" class="action-btn export-abnormal w-full py-2">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> 导出异常
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="abnormalSection" class="card hidden">
+            <h2 class="text-sm font-medium mb-3">异常考勤列表</h2>
+            <div class="table-container">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>学生姓名</th>
+                            <th>考勤状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="abnormalBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 日期查询区域 -->
+        <div id="dateQuery" class="card">
+            <h2 class="text-sm font-medium mb-3">按日期查询考勤记录</h2>
+            <input type="date" id="queryDate">
+            <button id="queryButton">
+                <i class="fas fa-search mr-1"></i>查询
+            </button>
+        </div>
+
+        <footer class="footer">
+            <p class="text-xs text-gray-500">制作人：云南经贸外事职业学院 24 级计算机应用技术 1 班 管乙聲</p>
+            <p class="text-xs text-gray-500">&copy; <span id="currentYear"></span> 课堂考勤系统</p>
+        </footer>
+    </div>
+
+    <script>
+        // 自动更新年份
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // 状态按钮类型
+        const statusTypes = ['正常', '病假', '公假', '事假', '缺勤'];
+        const statusClasses = ['normal', 'sick', 'public', 'leave', 'absent'];
+
+        // 数据存储，加入日期维度
+        let allAttendances = {};
+        let currentDate = new Date().toISOString().split('T')[0];
+        let students = [];
+        let attendances = [];
+
+        // 加载本地存储
+        const loadData = () => {
+            const data = localStorage.getItem('attendanceData');
+            if (data) {
+                allAttendances = JSON.parse(data);
+                if (allAttendances[currentDate]) {
+                    students = allAttendances[currentDate].names;
+                    attendances = allAttendances[currentDate].statuses;
+                    document.getElementById('studentList').value = students.join('\n');
+                    renderAttendanceTable();
+                }
+            }
+        };
+
+        // 保存数据
+        const saveData = () => {
+            allAttendances[currentDate] = { names: students, statuses: attendances };
+            localStorage.setItem('attendanceData', JSON.stringify(allAttendances));
+        };
+
+        // 渲染考勤表格
+        const renderAttendanceTable = () => {
+            const body = document.getElementById('attendanceBody');
+            body.innerHTML = '';
+
+            students.forEach((name, index) => {
+                const row = document.createElement('tr');
+
+                // 姓名列
+                const nameCell = document.createElement('td');
+                nameCell.style.cssText = 'min-width: 120px; max-width: 120px; word-break: keep-all; white-space: nowrap;';
+                nameCell.textContent = name;
+                row.appendChild(nameCell);
+
+                // 状态按钮列
+                const statusCell = document.createElement('td');
+                statusTypes.forEach((status, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = `status-btn ${statusClasses[idx]} ${attendances[index] === status ? 'selected' : ''}`;
+                    btn.textContent = status;
+                    btn.addEventListener('click', () => {
+                        attendances[index] = status;
+                        statusCell.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        saveData();
+                    });
+                    statusCell.appendChild(btn);
+                });
+                row.appendChild(statusCell);
+                body.appendChild(row);
+            });
+
+            document.getElementById('attendanceSection').classList.remove('hidden');
+        };
+
+        // 导入学生
+        document.getElementById('importStudents').addEventListener('click', () => {
+            students = document.getElementById('studentList').value.split('\n')
+               .map(name => name.trim()).filter(name => name);
+            attendances = new Array(students.length).fill('正常');
+            saveData();
+            renderAttendanceTable();
+        });
+
+        // 确认考勤
+        document.getElementById('confirmAttendance').addEventListener('click', () => {
+            const abnormal = students.map((name, index) => ({
+                name,
+                status: attendances[index]
+            })).filter(item => item.status!== '正常');
+
+            const abnormalBody = document.getElementById('abnormalBody');
+            abnormalBody.innerHTML = '';
+
+            abnormal.forEach(item => {
+                abnormalBody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.status}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('abnormalSection').classList.toggle('hidden', abnormal.length === 0);
+            document.getElementById('exportButtons').classList.remove('hidden');
+        });
+
+        // 导出功能
+        const exportCsv = (data, filename) => {
+            const csvContent = `学生姓名,考勤状态\n${data.map(item => `${item.name},${item.status}`).join('\n')}`;
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download!== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `${filename}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        };
+
+        document.getElementById('exportAllAttendance').addEventListener('click', () => {
+            const data = students.map((name, index) => ({ name, status: attendances[index] }));
+            exportCsv(data, '全部考勤');
+        });
+
+        document.getElementById('exportAbnormalAttendance').addEventListener('click', () => {
+            const abnormal = students.map((name, index) => ({ name, status: attendances[index] }))
+               .filter(item => item.status!== '正常');
+            exportCsv(abnormal, '异常考勤');
+        });
+
+        // 日期查询功能
+        document.getElementById('queryButton').addEventListener('click', () => {
+            const queryDate = document.getElementById('queryDate').value;
+            if (allAttendances[queryDate]) {
+                students = allAttendances[queryDate].names;
+                attendances = allAttendances[queryDate].statuses;
+                renderAttendanceTable();
+            } else {
+                alert('该日期暂无考勤记录。');
+            }
+        });
+
+        // 初始化加载
+        loadData();
+    </script>
+</body>
+
+</html>
+    
