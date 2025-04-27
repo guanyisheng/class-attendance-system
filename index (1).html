@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <title>课堂考勤系统</title>
+</head>
+
+<body class="bg-gray-100 p-4">
+    <h1 class="text-2xl font-bold mb-4">课堂考勤系统</h1>
+    <div class="mb-4">
+        <label for="studentList" class="block text-sm font-medium text-gray-700">导入学生名单 (每行一个学生姓名)</label>
+        <textarea id="studentList" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+        <button id="importStudents" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            导入学生
+        </button>
+    </div>
+    <div id="attendanceTable" class="hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        学生姓名
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        考勤情况
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="attendanceBody" class="bg-white divide-y divide-gray-200">
+            </tbody>
+        </table>
+        <button id="exportAttendance" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            导出考勤结果
+        </button>
+    </div>
+
+    <script>
+        const studentList = document.getElementById('studentList');
+        const importStudentsButton = document.getElementById('importStudents');
+        const attendanceTable = document.getElementById('attendanceTable');
+        const attendanceBody = document.getElementById('attendanceBody');
+        const exportAttendanceButton = document.getElementById('exportAttendance');
+
+        importStudentsButton.addEventListener('click', () => {
+            const names = studentList.value.split('\n').filter(name => name.trim()!== '');
+            if (names.length > 0) {
+                attendanceTable.classList.remove('hidden');
+                attendanceBody.innerHTML = '';
+                names.forEach(name => {
+                    const row = document.createElement('tr');
+                    const nameCell = document.createElement('td');
+                    nameCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                    nameCell.textContent = name;
+                    const statusCell = document.createElement('td');
+                    statusCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                    const select = document.createElement('select');
+                    select.classList.add('border', 'rounded-md', 'px-2', 'py-1');
+                    const options = ['正常', '病假', '公假', '事假', '缺勤'];
+                    options.forEach(option => {
+                        const opt = document.createElement('option');
+                        opt.value = option;
+                        opt.textContent = option;
+                        select.appendChild(opt);
+                    });
+                    statusCell.appendChild(select);
+                    row.appendChild(nameCell);
+                    row.appendChild(statusCell);
+                    attendanceBody.appendChild(row);
+                });
+            }
+        });
+
+        exportAttendanceButton.addEventListener('click', () => {
+            const rows = attendanceBody.querySelectorAll('tr');
+            let csvContent = '学生姓名,考勤情况\n';
+            rows.forEach(row => {
+                const name = row.querySelector('td:first-child').textContent;
+                const status = row.querySelector('select').value;
+                csvContent += `${name},${status}\n`;
+            });
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download!== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'attendance.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+    </script>
+</body>
+
+</html>
+    
